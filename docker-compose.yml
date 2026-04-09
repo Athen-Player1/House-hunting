@@ -1,9 +1,6 @@
 services:
   editorial-estate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: editorial-estate:latest
+    image: ghcr.io/athen-player1/house-hunting:latest
     container_name: editorial-estate
     ports:
       - "8080:8787"

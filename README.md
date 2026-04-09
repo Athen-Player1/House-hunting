@@ -21,16 +21,22 @@ API: `http://localhost:8787`
 
 ## Docker
 
-Build and run the remote-style single-container deployment:
+Run the remote-style single-container deployment from GHCR:
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
 Then open:
 
 ```bash
 http://localhost:8080
+```
+
+Image:
+
+```bash
+ghcr.io/athen-player1/house-hunting:latest
 ```
 
 ## Notes

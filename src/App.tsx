@@ -38,7 +38,7 @@ const defaultFilters: Filters = {
   town: "",
   search: "",
   maxPrice: 750000,
-  minReduction: 5000,
+  minReduction: 0,
   minBeds: 3,
   minBaths: 1,
   propertyType: "",
@@ -93,6 +93,7 @@ function App() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [savedIds, setSavedIds] = useState<string[]>(() => readStored(SAVED_KEY, []));
   const [alertPropertyIds, setAlertPropertyIds] = useState<string[]>(() => readStored(ALERT_KEY, []));
   const [alertFeed, setAlertFeed] = useState<PriceAlert[]>(() => readStored(ALERT_FEED_KEY, []));
@@ -123,18 +124,31 @@ function App() {
 
   const resetAndLoad = useCallback(async () => {
     setIsLoading(true);
-    const response = await fetch(`/api/properties?${buildParams().toString()}`);
-    const data = (await response.json()) as PropertyResponse;
+    setLoadError("");
 
-    setItems(data.items);
-    setAvailableCounties(data.availableCounties);
-    setAvailableTowns(data.availableTowns);
-    setTownsByCounty(data.townsByCounty);
-    setAvailablePropertyTypes(data.availablePropertyTypes);
-    setAvailableFeatures(data.availableFeatures);
-    setNextCursor(data.nextCursor);
-    setHasLoaded(true);
-    setIsLoading(false);
+    try {
+      const response = await fetch(`/api/properties?${buildParams().toString()}`);
+      if (!response.ok) {
+        throw new Error(`Property feed request failed with ${response.status}`);
+      }
+
+      const data = (await response.json()) as PropertyResponse;
+      setItems(data.items);
+      setAvailableCounties(data.availableCounties);
+      setAvailableTowns(data.availableTowns);
+      setTownsByCounty(data.townsByCounty);
+      setAvailablePropertyTypes(data.availablePropertyTypes);
+      setAvailableFeatures(data.availableFeatures);
+      setNextCursor(data.nextCursor);
+      setHasLoaded(true);
+    } catch {
+      setItems([]);
+      setNextCursor(null);
+      setLoadError("The property feed is unavailable right now. Check the local API on port 8787 and tap retry.");
+      setHasLoaded(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, [buildParams]);
 
   const loadCatalog = useCallback(async () => {
@@ -146,22 +160,38 @@ function App() {
       minBaths: "0",
       garden: "false"
     });
+    try {
+      const response = await fetch(`/api/properties?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Catalog request failed with ${response.status}`);
+      }
 
-    const response = await fetch(`/api/properties?${params.toString()}`);
-    const data = (await response.json()) as PropertyResponse;
-    setCatalog(data.items);
+      const data = (await response.json()) as PropertyResponse;
+      setCatalog(data.items);
+    } catch {
+      setCatalog([]);
+    }
   }, []);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || isLoading || activeTab !== "feed") return;
 
     setIsLoading(true);
-    const response = await fetch(`/api/properties?${buildParams(nextCursor).toString()}`);
-    const data = (await response.json()) as PropertyResponse;
 
-    setItems((current) => [...current, ...data.items]);
-    setNextCursor(data.nextCursor);
-    setIsLoading(false);
+    try {
+      const response = await fetch(`/api/properties?${buildParams(nextCursor).toString()}`);
+      if (!response.ok) {
+        throw new Error(`Pagination request failed with ${response.status}`);
+      }
+
+      const data = (await response.json()) as PropertyResponse;
+      setItems((current) => [...current, ...data.items]);
+      setNextCursor(data.nextCursor);
+    } catch {
+      setLoadError("We couldn't load more properties. The feed connection dropped.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [activeTab, buildParams, isLoading, nextCursor]);
 
   useEffect(() => {
@@ -309,7 +339,7 @@ function App() {
     Number(filters.maxPrice < 750000) +
     Number(filters.minBeds > 3) +
     Number(filters.minBaths > 1) +
-    Number(filters.minReduction > 5000);
+    Number(filters.minReduction > 0);
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
@@ -322,7 +352,7 @@ function App() {
                 UK Deal Stream
               </p>
               <h1 className="font-headline text-xl font-extrabold tracking-tight text-primary-container">
-                The Editorial Estate
+                Maisoneg - A Jumble APP
               </h1>
             </div>
           </div>
@@ -422,6 +452,24 @@ function App() {
 
         {activeTab === "feed" && (
           <section className="mt-6 grid gap-5">
+            {loadError && (
+              <div className="rounded-[1.25rem] border border-error/15 bg-error-container px-5 py-4 shadow-soft">
+                <p className="font-headline text-lg font-bold tracking-tight text-on-error-container">
+                  Feed unavailable
+                </p>
+                <p className="mt-1 font-label text-sm text-on-error-container">
+                  {loadError}
+                </p>
+                <button
+                  className="mt-4 rounded-full bg-on-error-container px-4 py-2 font-label text-sm font-semibold text-white"
+                  onClick={() => void resetAndLoad()}
+                  type="button"
+                >
+                  Retry feed
+                </button>
+              </div>
+            )}
+
             {!hasLoaded && (
               <div className="rounded-xl bg-surface-container-low p-6 shadow-soft">
                 <p className="font-label text-sm text-on-surface-variant">
@@ -927,12 +975,22 @@ function FilterControls({
             setFilters((current) => ({ ...current, maxPrice: Number(event.target.value) }))
           }
         >
+          <option value={100000}>Up to £100k</option>
+          <option value={150000}>Up to £150k</option>
+          <option value={200000}>Up to £200k</option>
           <option value={250000}>Up to £250k</option>
+          <option value={300000}>Up to £300k</option>
           <option value={350000}>Up to £350k</option>
+          <option value={400000}>Up to £400k</option>
+          <option value={450000}>Up to £450k</option>
           <option value={500000}>Up to £500k</option>
+          <option value={600000}>Up to £600k</option>
           <option value={750000}>Up to £750k</option>
           <option value={1000000}>Up to £1m</option>
+          <option value={1500000}>Up to £1.5m</option>
           <option value={2000000}>Up to £2m</option>
+          <option value={3000000}>Up to £3m</option>
+          <option value={5000000}>Up to £5m</option>
         </select>
 
         <select
@@ -942,6 +1000,7 @@ function FilterControls({
             setFilters((current) => ({ ...current, minReduction: Number(event.target.value) }))
           }
         >
+          <option value={0}>Any reduction</option>
           <option value={5000}>Reduced by £5k+</option>
           <option value={10000}>Reduced by £10k+</option>
           <option value={25000}>Reduced by £25k+</option>

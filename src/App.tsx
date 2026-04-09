@@ -67,11 +67,6 @@ function scoreTone(score: number) {
 }
 
 function openListing(property: PropertyListing) {
-  if (!property.isLiveListing) {
-    window.alert("This is seeded demo data right now, so there is no live portal listing behind this card yet.");
-    return;
-  }
-
   window.open(property.listingUrl, "_blank", "noopener,noreferrer");
 }
 
@@ -511,7 +506,7 @@ function App() {
                             onClick={() => openListing(property)}
                             type="button"
                           >
-                            {property.isLiveListing ? "Open listing" : "Demo listing"}
+                            {property.isLiveListing ? "Open listing" : "Open market search"}
                           </button>
                         </div>
                       </div>
@@ -694,7 +689,7 @@ function PropertyCard({
               onClick={() => openListing(property)}
               type="button"
             >
-              {property.isLiveListing ? "Open listing" : "Demo listing"}
+              {property.isLiveListing ? "Open listing" : "Open market search"}
             </button>
           </div>
 
@@ -713,7 +708,7 @@ function PropertyCard({
             <InsightCard
               label="Listing"
               value={property.source}
-              detail={property.isLiveListing ? "Tap image to open the original listing" : "Seeded demo card, not a live portal listing yet"}
+              detail={property.isLiveListing ? "Tap image to open the original listing" : "Tap image to open a live market search matching this card"}
             />
           </div>
 

@@ -41,8 +41,9 @@ ghcr.io/athen-player1/house-hunting:latest
 
 ## Notes
 
-- The current repo ships with seeded UK listings so the app is usable immediately.
-- The current property cards are seeded demo listings, not live Rightmove/Zoopla/OnTheMarket records.
+- The repo ships with seeded UK listings so the app is usable immediately when no live search target is provided.
+- Targeted county or town searches now attempt live Zoopla ingestion through a local curl-based scraper path, with seeded fallback when no live scrape target is available.
+- Live Zoopla matches carry real listing detail URLs; fallback seeded cards keep using search-style links until additional live sources are integrated.
 - `server/providers/portal-adapters.ts` is the seam for plugging in real scrapers or licensed feeds.
 - School bands and crime signals are modeled in the API response so official public datasets can be wired in without redesigning the frontend.
 - Additional research on commercial vs open-data integrations lives in `docs/integrations.md`.

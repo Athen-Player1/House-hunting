@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { properties } from "./data/properties.js";
 import { ukCounties } from "./data/uk-counties.js";
+import { seededAdapter, zooplaAdapter } from "./providers/portal-adapters.js";
 import type { PropertyListing } from "../src/types.js";
 
 const app = express();
@@ -19,7 +20,7 @@ app.get("/api/health", (_request, response) => {
   response.json({ ok: true });
 });
 
-app.get("/api/properties", (request, response) => {
+app.get("/api/properties", async (request, response) => {
   const limit = Number(request.query.limit ?? 6);
   const cursor = Number(request.query.cursor ?? 0);
   const counties = String(request.query.counties ?? "")
@@ -40,7 +41,23 @@ app.get("/api/properties", (request, response) => {
     .map((feature) => feature.trim())
     .filter(Boolean);
 
-  const filtered = properties.filter((property: PropertyListing) => {
+  const liveListings = await zooplaAdapter.fetchListings({
+    counties,
+    town,
+    maxPrice,
+    minBeds,
+    minBaths,
+    garden
+  });
+  const seededListings = await seededAdapter.fetchListings();
+  const catalog = [...liveListings, ...seededListings].filter(
+    (property, index, list) =>
+      list.findIndex(
+        (candidate) => candidate.listingUrl === property.listingUrl || candidate.id === property.id
+      ) === index
+  );
+
+  const filtered = catalog.filter((property: PropertyListing) => {
     const haystack =
       `${property.title} ${property.town} ${property.county} ${property.postcode} ${property.summary} ${property.features.join(" ")}`.toLowerCase();
 
@@ -60,15 +77,15 @@ app.get("/api/properties", (request, response) => {
   });
 
   const availableCounties = ukCounties;
-  const availableTowns = [...new Set(properties.map((property) => property.town))];
-  const availablePropertyTypes = [...new Set(properties.map((property) => property.propertyType))];
-  const availableFeatures = [...new Set(properties.flatMap((property) => property.features))].sort();
+  const availableTowns = [...new Set(catalog.map((property) => property.town).filter(Boolean))];
+  const availablePropertyTypes = [...new Set(catalog.map((property) => property.propertyType))];
+  const availableFeatures = [...new Set(catalog.flatMap((property) => property.features))].sort();
   const townsByCounty = Object.fromEntries(
     availableCounties.map((entryCounty) => [
       entryCounty,
       [
         ...new Set(
-          properties
+          catalog
             .filter((property: PropertyListing) => property.county === entryCounty)
             .map((property: PropertyListing) => property.town)
         )
